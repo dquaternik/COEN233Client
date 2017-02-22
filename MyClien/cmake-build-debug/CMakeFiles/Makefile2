@@ -45,19 +45,19 @@ cmake_force:
 SHELL = /bin/sh
 
 # The CMake executable.
-CMAKE_COMMAND = /cygdrive/c/Users/Devon/.CLion2016.3/system/cygwin_cmake/bin/cmake.exe
+CMAKE_COMMAND = /cygdrive/c/Users/caust/.CLion2016.3/system/cygwin_cmake/bin/cmake.exe
 
 # The command to remove a file.
-RM = /cygdrive/c/Users/Devon/.CLion2016.3/system/cygwin_cmake/bin/cmake.exe -E remove -f
+RM = /cygdrive/c/Users/caust/.CLion2016.3/system/cygwin_cmake/bin/cmake.exe -E remove -f
 
 # Escaping for special characters.
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /cygdrive/c/Users/Devon/CLionProjects/MyClien
+CMAKE_SOURCE_DIR = /cygdrive/c/Users/caust/CLionProjects/MyClien
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /cygdrive/c/Users/Devon/CLionProjects/MyClien/cmake-build-debug
+CMAKE_BINARY_DIR = /cygdrive/c/Users/caust/CLionProjects/MyClien/cmake-build-debug
 
 #=============================================================================
 # Target rules for target CMakeFiles/MyClien.dir
@@ -66,7 +66,7 @@ CMAKE_BINARY_DIR = /cygdrive/c/Users/Devon/CLionProjects/MyClien/cmake-build-deb
 CMakeFiles/MyClien.dir/all:
 	$(MAKE) -f CMakeFiles/MyClien.dir/build.make CMakeFiles/MyClien.dir/depend
 	$(MAKE) -f CMakeFiles/MyClien.dir/build.make CMakeFiles/MyClien.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/cygdrive/c/Users/Devon/CLionProjects/MyClien/cmake-build-debug/CMakeFiles --progress-num=1,2 "Built target MyClien"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/cygdrive/c/Users/caust/CLionProjects/MyClien/cmake-build-debug/CMakeFiles --progress-num=1,2 "Built target MyClien"
 .PHONY : CMakeFiles/MyClien.dir/all
 
 # Include target in all.
@@ -76,9 +76,9 @@ all: CMakeFiles/MyClien.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/MyClien.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /cygdrive/c/Users/Devon/CLionProjects/MyClien/cmake-build-debug/CMakeFiles 2
+	$(CMAKE_COMMAND) -E cmake_progress_start /cygdrive/c/Users/caust/CLionProjects/MyClien/cmake-build-debug/CMakeFiles 2
 	$(MAKE) -f CMakeFiles/Makefile2 CMakeFiles/MyClien.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /cygdrive/c/Users/Devon/CLionProjects/MyClien/cmake-build-debug/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /cygdrive/c/Users/caust/CLionProjects/MyClien/cmake-build-debug/CMakeFiles 0
 .PHONY : CMakeFiles/MyClien.dir/rule
 
 # Convenience name for target.

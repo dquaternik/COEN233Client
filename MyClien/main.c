@@ -79,6 +79,8 @@ int main(int argc, char *argv[])
     //fragment the input message
     strcpy(mess,argv[2]);
     datapack *send = fragment(mess);
+    printf("send: %d\n",send);
+    datapack *cursend = send;
 
     //Ensure proper number of arguments
     if(argc != 3)
@@ -122,15 +124,21 @@ int main(int argc, char *argv[])
     }
 
 
-
     //LOOP START
     while(count < send->numseg)
     {
+        if(count>0){
+            cursend = send->next;
+        }
+
         //Serialize the first fragment
-        serialize_Data(send[count],b);
-        printf("serial\n");
+        serialize_Data(*cursend,b);
+        printf("serial: %d\n",b->data);
         //send the first fragment to the server
-        if ((numbytes = sendto(sockfd, b->data, b->size, 0, p->ai_addr, p->ai_addrlen)) == -1)
+        //ISSUE
+        numbytes = sendto(sockfd, b->data, b->size, 0, p->ai_addr, p->ai_addrlen);
+        printf("numbytes: %d\n",numbytes);
+        if (numbytes == -1)
         {
             perror("talker: sendto");
             exit(1);
@@ -194,40 +202,66 @@ int main(int argc, char *argv[])
 //Fragments message into maximum size
 datapack * fragment(char message[])
 {
-    int count = 0;
-    int nsegs = ceil(((float) strlen(message))/((float) MAXPAY)); //find number of fragments to create
+    int count = 1;
+    int length = strlen(message);
+    int nsegs = ceil(((float) length)/((float) MAXPAY)); //find number of fragments to create
+    if(length<MAXPAY){
+        count = nsegs+1;
+    }
     printf("nsegs = %d\n",nsegs);
-    datapack *sendpack = malloc(sizeof(datapack)*nsegs);        //create array with as many packets as needed
+    datapack *headpack = malloc(sizeof(datapack));        //create head packet and next pack
+    datapack *curpack;        //used to create next pack
+
+    //setup head node
+    headpack->startid = STARTID;
+    headpack->clientid = CLIENTID;
+    headpack->data = DATA;
+    headpack->segnum = 1;
+    headpack->numseg = nsegs;
+    if(count>nsegs){
+        headpack->len = length;
+    } else{
+        headpack->len = MAXPAY;
+    }
+    int i = 0;
+    while(i<headpack->len){
+        headpack->payload[i] = message[i];
+        i++;
+    }
+
+    headpack->endid = ENDID;
+    curpack = headpack;
+
     while(count < nsegs)
     {
+        curpack->next = malloc(sizeof(datapack));
+        curpack->next = curpack;
         //initialize all the constant data
-        sendpack[count].startid = STARTID;
-        sendpack[count].clientid = CLIENTID;
-        sendpack[count].data = DATA;
-        sendpack[count].segnum = count +1;
-        sendpack[count].numseg = nsegs;
-        sendpack[count].len = MAXPAY;
+        curpack->startid = STARTID;
+        curpack->clientid = CLIENTID;
+        curpack->data = DATA;
+        curpack->segnum = count +1;
+        curpack->numseg = nsegs;
+        curpack->len = MAXPAY;
 
         //insert portion of payload into the packet
-        int i = 0;
+        i = 0;
         while(i < MAXPAY){
-            sendpack[count].payload[i] = message[255*count+i];
+            curpack->payload[i] = message[255*count+i];
             if(message[255*count+i] == '\0'){
-                sendpack[count].len = i; //Set length to i to error check server side. All extra will be null
+                curpack->len = i; //Set length to i to error check server side. All extra will be null
             }
             i++;
         }
 
         //Insert endid
-        sendpack[count].endid = ENDID;
-        if(count > 0)
-        {
-            sendpack[count-1].next = &sendpack[count];
-        }
+        curpack->endid = ENDID;
+
         count++;
     }
 
-    return sendpack;
+    printf("headpack %d\n",headpack);
+    return headpack;
 }
 
 //Serialize each fragment
@@ -240,7 +274,7 @@ void serialize_Data(datapack send, databuf *output)
     serialize_short(send.data,output);
     printf("serialize dat\n");
     serialize_char(send.segnum,output);
-    printf("serialize seg\n");
+    printf("serialize seg: %d\n",send.segnum);
     serialize_char(send.len,output);
     printf("serialize len\n");
     for(int i = 0; i < MAXPAY; i++)
