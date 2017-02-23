@@ -14,6 +14,8 @@
 #define STARTID 0xffff
 #define ENDID 0xffff
 #define DATA 0xfff1
+#define ACK 0xfff2
+#define REJECT 0xfff3
 
 //Define packet structures
 typedef struct datapack {
@@ -72,15 +74,14 @@ int main(int argc, char *argv[])
     struct sockaddr_in their_addr;
     char mess[strlen(argv[2])];
     databuf *b = new_buffer();
+    int count = 0;
     unsigned char buf1[MAXBUFLEN];
     struct pollfd fd;
-    int count = 0;
+    int count1 = 0;
 
     //fragment the input message
     strcpy(mess,argv[2]);
     datapack *send = fragment(mess);
-    printf("send: %d\n",send);
-    datapack *cursend = send;
 
     //Ensure proper number of arguments
     if(argc != 3)
@@ -127,56 +128,59 @@ int main(int argc, char *argv[])
     //LOOP START
     while(count < send->numseg)
     {
-        if(count>0){
-            cursend = send->next;
-        }
-
         //Serialize the first fragment
-        serialize_Data(*cursend,b);
-        printf("serial: %d\n",b->data);
+        serialize_Data(*send,b);
         //send the first fragment to the server
-        //ISSUE
         numbytes = sendto(sockfd, b->data, b->size, 0, p->ai_addr, p->ai_addrlen);
-        printf("numbytes: %d\n",numbytes);
         if (numbytes == -1)
         {
             perror("talker: sendto");
             exit(1);
         }
 
-        printf("sendto\n");
-        //wait for ACK/REJ from server
-        res = poll(&fd,1,1000);
+        //wait for ACK/REJ from server (This is ack_timer
+        while(count1 < 2){
+            res = poll(&fd,1,3000);
+            if(res == 0) {
+                //timeout
+                //resend + increment count
+                numbytes = sendto(sockfd, b->data, b->size, 0, p->ai_addr, p->ai_addrlen);
+                if (numbytes == -1)
+                {
+                    perror("talker: sendto");
+                    exit(1);
+                }
+                count1++;
 
-        if(res == 0)
-        {
-            //timeout
+            }
+            else if(res == -1) {
+                //error
+                perror("poll error");
+                return res;
+
+            } else {
+                //Receive the ACK/REJ
+                socklen_t len = sizeof(their_addr);
+                int numbytes = recvfrom(sockfd,buf1,MAXBUFLEN-1, 0,&their_addr, &len);
+                if(numbytes == -1){
+                    perror("ACK/REJ reception error");
+                    exit(1);
+                }
+                ackpack *ack = malloc(sizeof(ackpack));
+                rejpack *rej = malloc(sizeof(rejpack));
+                deserialize(ack,rej,buf1);
+                free(ack);
+                free(rej);
+                break;
+            };
         }
-        else if(res == -1)
-        {
-            //error
-            perror("poll error");
-            return res;
-
-        } else
-        {
-            //Receive the ACK/REJ
-            socklen_t len = sizeof(their_addr);
-            numbytes = recvfrom(sockfd,buf1,MAXBUFLEN-1, 0,&their_addr, &len);
-            if(numbytes == -1)
-            {
-                perror("Ack error\n");
-                exit(1);
-            }
-            else{
-                printf("Ack received\n");
-            }
-        };
-        printf("recvfrom\n");
 
 
-        //If rejected, decipher the code
 
+        //next packet
+        send = send->next;
+        b->next = 0;
+        count1 = 0;
         count++;
         printf("%d\n",count);
         //LOOP END
@@ -199,91 +203,79 @@ int main(int argc, char *argv[])
     return 0;
 }
 
+int ackrej(int sockfd, struct sockaddr_in *their_addr){
+
+
+
+
+}
+
+
+//databuffer initilization
+databuf *new_buffer(){
+    databuf *b = malloc(sizeof(datapack)*2);
+
+    b->data = malloc(sizeof(datapack));
+    b->size = sizeof(datapack);
+    b->next = 0;
+
+    return b;
+};
+
 //Fragments message into maximum size
-datapack * fragment(char message[])
+datapack *fragment(char message[])
 {
-    int count = 1;
-    int length = strlen(message);
-    int nsegs = ceil(((float) length)/((float) MAXPAY)); //find number of fragments to create
-    if(length<MAXPAY){
-        count = nsegs+1;
-    }
+    int count = 0,flag1 = 0,i = 0;
+    int nsegs = ceil(((float) strlen(message))/((float) MAXPAY)); //find number of fragments to create
     printf("nsegs = %d\n",nsegs);
-    datapack *headpack = malloc(sizeof(datapack));        //create head packet and next pack
-    datapack *curpack;        //used to create next pack
-
-    //setup head node
-    headpack->startid = STARTID;
-    headpack->clientid = CLIENTID;
-    headpack->data = DATA;
-    headpack->segnum = 1;
-    headpack->numseg = nsegs;
-    if(count>nsegs){
-        headpack->len = length;
-    } else{
-        headpack->len = MAXPAY;
-    }
-    int i = 0;
-    while(i<headpack->len){
-        headpack->payload[i] = message[i];
-        i++;
-    }
-
-    headpack->endid = ENDID;
-    curpack = headpack;
-
+    datapack *sendpack = malloc(sizeof(datapack)*nsegs);        //create array with as many packets as needed
     while(count < nsegs)
     {
-        curpack->next = malloc(sizeof(datapack));
-        curpack->next = curpack;
         //initialize all the constant data
-        curpack->startid = STARTID;
-        curpack->clientid = CLIENTID;
-        curpack->data = DATA;
-        curpack->segnum = count +1;
-        curpack->numseg = nsegs;
-        curpack->len = MAXPAY;
+        sendpack[count].startid = STARTID;
+        sendpack[count].clientid = CLIENTID;
+        sendpack[count].data = DATA;
+        sendpack[count].segnum = count +1;
+        sendpack[count].numseg = nsegs;
+        sendpack[count].len = MAXPAY;
 
         //insert portion of payload into the packet
         i = 0;
         while(i < MAXPAY){
-            curpack->payload[i] = message[255*count+i];
-            if(message[255*count+i] == '\0'){
-                curpack->len = i; //Set length to i to error check server side. All extra will be null
+            sendpack[count].payload[i] = message[255*count+i];
+            if(message[255*count+i] == '\0' && flag1 != 1){
+                sendpack[count].len = i; //Set length to i to error check server side. All extra will be null
+                flag1 = 1;
             }
             i++;
         }
 
         //Insert endid
-        curpack->endid = ENDID;
-
+        sendpack[count].endid = ENDID;
+        if(count > 0)
+        {
+            sendpack[count-1].next = &sendpack[count];
+        }
         count++;
+        flag1 = 0;
     }
 
-    printf("headpack %d\n",headpack);
-    return headpack;
+    return sendpack;
 }
 
 //Serialize each fragment
 void serialize_Data(datapack send, databuf *output)
 {
     serialize_short(send.startid,output);
-    printf("serialize start\n");
     serialize_char(send.clientid,output);
-    printf("serialize clien\n");
     serialize_short(send.data,output);
-    printf("serialize dat\n");
     serialize_char(send.segnum,output);
-    printf("serialize seg: %d\n",send.segnum);
     serialize_char(send.len,output);
-    printf("serialize len\n");
     for(int i = 0; i < MAXPAY; i++)
     {
         serialize_char(send.payload[i],output);
-        printf("serialize pay");
     }
     serialize_short(send.endid,output);
-    printf("serialize end\n");
 }
 
 //Space reservation. Can be useful when varying packet size, but this setup only has 1 so it goes unused.
@@ -313,13 +305,42 @@ void serialize_char(char x, databuf *b)
     b->next += sizeof(char);
 };
 
-//databuffer initilization
-databuf *new_buffer(){
-    databuf *b = malloc(sizeof(datapack)*2);
+//Deserialize ACK/REJ packs
+int deserialize(ackpack *ack,rejpack *rej, char buffer[]){
 
-    b->data = malloc(sizeof(datapack));
-    b->size = sizeof(datapack);
-    b->next = 0;
 
-    return b;
+    if(((u_char) buffer[3] == 0xf2 && (u_char) buffer[4] == 0xff)
+       || ((u_char) buffer[3] == 0xff && (u_char) buffer[4] == 0xf2)){
+        ack->ack = ACK;
+        printf("ACK received\n");
+
+    }else if(((u_char) buffer[3] == 0xf3 && (u_char) buffer[4] == 0xff)
+            || ((u_char) buffer[3] == 0xff && (u_char) buffer[4] == 0xf3)){
+
+        rej->reject = REJECT;
+        rej->subc = buffer[5] + buffer[6];
+        if(rej->subc == 1){
+            perror("Error: Packet StartID incorrect\n");
+            exit(1);
+        } else if(rej->subc == 2){
+            perror("Error: Packet client field incorrect\n");
+            exit(2);
+        } else if(rej->subc == 3){
+            perror("Error: Packet DATA field incorrect\n");
+            exit(3);
+        } else if(rej->subc == 4){
+            perror("Error: Packet Segment Out of Order\n");
+            exit(4);
+        } else if(rej->subc == 5){
+            perror("Error: Payload does not match length\n");
+            exit(5);
+        } else if(rej->subc == 7){
+            perror("Error: Missing End of Packet ID\n");
+            exit(7);
+        }
+
+    } else{
+        return 2;
+    }
+
 };
