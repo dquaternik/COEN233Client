@@ -1,1 +1,1 @@
-CLIENT for 233 programming assingment 1
+CLIENT for 233 programming assingment 1. Takes in an IP address and a string to transmit.
