@@ -16,6 +16,10 @@
 #define DATA 0xfff1
 #define ACK 0xfff2
 #define REJECT 0xfff3
+#define REJSUB1 0xfff4
+#define REJSUB2 0xfff5
+#define REJSUB3 0xfff6
+#define REJSUB4 0xfff7
 
 //Define packet structures
 typedef struct datapack {
@@ -195,7 +199,7 @@ int main(int argc, char *argv[])
     //free memory from server info after sending and close the socket and turn off client
     freeaddrinfo(servinfo);
 
-    printf("talker: sent %d bytes to %s\n",numbytes, argv[1]);
+    printf("Transmission Complete, no errors received");
     close(sockfd);
     free(send);
     free(b);
@@ -328,15 +332,18 @@ int deserialize(ackpack *ack,rejpack *rej, char buffer[]){
         } else if(rej->subc == 3){
             perror("Error: Packet DATA field incorrect\n");
             exit(3);
-        } else if(rej->subc == 4){
+        } else if(rej->subc == REJSUB1){
             perror("Error: Packet Segment Out of Order\n");
-            exit(4);
-        } else if(rej->subc == 5){
+            exit(REJSUB1);
+        } else if(rej->subc == REJSUB2){
             perror("Error: Payload does not match length\n");
-            exit(5);
-        } else if(rej->subc == 7){
+            exit(REJSUB2);
+        } else if(rej->subc == REJSUB3){
             perror("Error: Missing End of Packet ID\n");
-            exit(7);
+            exit(REJSUB3);
+        } else if(rej->subc == REJSUB4){
+            perror("Error: Duplicate Packet sent\n");
+            exit(REJSUB4);
         }
 
     } else{
