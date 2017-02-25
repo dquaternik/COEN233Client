@@ -48,6 +48,7 @@ packet *create_pack(short mess, char client, char tec, long ssn);
 void serialize_pack(packet pack, packbuff *b);
 void serialize_short(short x, packbuff *b);
 void serialize_char(char x, packbuff *b);
+void serialize_long(long x, packbuff *b);
 packbuff *new_buffer();
 int deserialize(packet *pack, char buffer[]);
 
