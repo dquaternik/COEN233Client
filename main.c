@@ -11,11 +11,11 @@
 
 #define SERVER "1337" //Server Port
 #define CLIENTID 0x45  //client id number
-#define SSNUM 0xf3847f35 //Source subscriber number
+#define SSNUM 0xf39b19382 //Source subscriber number
 #define TECH 04
 
 #define MAXPAY 5
-#define MAXBUFLEN 16 //packets worth of data
+#define MAXBUFLEN 15 //packets worth of data
 #define STARTID 0xffff
 #define ENDID 0xffff
 #define ACCPER 0xfff8
@@ -31,7 +31,7 @@ typedef struct packet {
     unsigned char segnum;
     unsigned char len;
     unsigned char tech;
-    unsigned long ssnum;
+    unsigned int ssnum;
     unsigned short endid;
 } packet;
 
@@ -44,11 +44,11 @@ typedef struct databuf {
 
 
 //Function definitions
-packet *create_pack(short mess, char client, char tec, long ssn);
+packet *create_pack(short mess, unsigned char client, unsigned char tec, unsigned int ssn);
 void serialize_pack(packet pack, packbuff *b);
 void serialize_short(short x, packbuff *b);
 void serialize_char(char x, packbuff *b);
-void serialize_long(long x, packbuff *b);
+void serialize_int(int x, packbuff *b);
 packbuff *new_buffer();
 int deserialize(packet *pack, char buffer[]);
 
@@ -107,7 +107,7 @@ int main(int argc, char *argv[]){
     //error check the socket was created properly
     if (p == NULL)
     {
-        fprintf(stderr, "talker: failed to create socket\n");
+        fprintf(stderr, "Socket not created\n");
         return 2;
     }
 
@@ -115,7 +115,7 @@ int main(int argc, char *argv[]){
     numbytes = sendto(sockfd, b->data, b->size, 0, p->ai_addr, p->ai_addrlen);
     if (numbytes == -1)
     {
-        perror("talker: sendto");
+        perror("sendto error");
         exit(1);
     }
 
@@ -128,7 +128,7 @@ int main(int argc, char *argv[]){
             numbytes = sendto(sockfd, b->data, b->size, 0, p->ai_addr, p->ai_addrlen);
             if (numbytes == -1)
             {
-                perror("talker: sendto");
+                perror("Sendto error");
                 exit(1);
             }
             count1++;
@@ -144,7 +144,7 @@ int main(int argc, char *argv[]){
             socklen_t len = sizeof(their_addr);
             int numbytes = recvfrom(sockfd,buf1,MAXBUFLEN-1, 0,&their_addr, &len);
             if(numbytes == -1){
-                perror("ACK/REJ reception error");
+                perror("Response reception error");
                 exit(1);
             }
             break;
@@ -204,8 +204,8 @@ packbuff *new_buffer(){
 };
 
 //Create access permission packet
-packet *create_pack(short mess, char client, char tec, long ssn) {
-    int nsegs = 1; //Only need 1 segment, this is only a verification server
+packet *create_pack(short mess, unsigned char client, unsigned char tec, unsigned int ssn) {
+    const int nsegs = 1; //only need 1 packet to verify paid
     packet *sendpack = malloc(sizeof(packet));
 
     //initialize all the constant data
@@ -222,6 +222,15 @@ packet *create_pack(short mess, char client, char tec, long ssn) {
     //Insert endid
     sendpack->endid = ENDID;
 
+    printf("start: %d\n",sendpack->startid);
+    printf("client: %d\n",sendpack->clientid);
+    printf("Message: %d\n",sendpack->mess);
+    printf("Segnum: %d\n",sendpack->segnum);
+    printf("len: %d\n",sendpack->len);
+    printf("tech: %d\n",sendpack->tech);
+    printf("SSNUM: %u\n",sendpack->ssnum);
+    printf("end: %d\n",sendpack->endid);
+
     return sendpack;
 }
 
@@ -229,32 +238,31 @@ packet *create_pack(short mess, char client, char tec, long ssn) {
 void serialize_pack(packet pack, packbuff *b){
     serialize_short(pack.startid,b);
     serialize_char(pack.clientid,b);
-    serialize_long(pack.mess,b);
+    serialize_short(pack.mess,b);
     serialize_char(pack.segnum,b);
     serialize_char(pack.len,b);
     serialize_char(pack.tech,b);
-    serialize_long(pack.ssnum,b);
+    serialize_int(pack.ssnum,b);
     serialize_short(pack.endid,b);
+
 };
 
 
 //Serialize by data size
 void serialize_short(short x, packbuff *b) {
-    //reserve(b, sizeof(short));
     memcpy(((char *)b->data) + b->next, &x, sizeof(short));
     b->next += sizeof(short);
 };
 
 
 void serialize_char(char x, packbuff *b) {
-    //reserve(b,sizeof(char));
     memcpy(((char *)b->data)+ b->next,&x,sizeof(char));
     b->next += sizeof(char);
 };
 
-void serialize_long(long x, packbuff *b){
-    memcpy(((char *)b->data) + b->next, &x,sizeof(long));
-    b->next += sizeof(char);
+void serialize_int(int x, packbuff *b){
+    memcpy(((char *)b->data) + b->next, &x,sizeof(int));
+    b->next += sizeof(int);
 };
 
 //Deserialize PAID,NPAID, or DNE
@@ -312,7 +320,7 @@ int deserialize(packet *pack, char buffer[]){
     pack->ssnum = buffer[8] + buffer[9] + buffer[10] +buffer[11];
 
     //Check payload length
-    ex1 = sizeof(pack->tech)+pack->ssnum;
+    ex1 = sizeof(pack->tech)+sizeof(pack->ssnum);
     if(pack->len != ex1){
         return 5;
     }
