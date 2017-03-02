@@ -232,7 +232,7 @@ datapack *fragment(char message[]) {
         sendpack[count].data = DATA;
         sendpack[count].segnum = count +1;
         sendpack[count].numseg = nsegs;
-        sendpack[count].len = MAXPAY;
+        sendpack[count].len = 5;
 
         //Insert payload into packet one byte at a time. If message is less than max length, the rest will be set to null characters.
         //This is to ensure uniformity throughout the packets, but length is adjusted and the server will not loop through empty data.
@@ -305,7 +305,7 @@ int deserialize(ackpack *ack,rejpack *rej, char buffer[]){
         return 1;
 
     }else if(((u_char) buffer[3] == 0xf3 && (u_char) buffer[4] == 0xff)
-            || ((u_char) buffer[3] == 0xff && (u_char) buffer[4] == 0xf3)){
+             || ((u_char) buffer[3] == 0xff && (u_char) buffer[4] == 0xf3)){
 
         rej->reject = REJECT;
         rej->subc = buffer[5] + buffer[6];

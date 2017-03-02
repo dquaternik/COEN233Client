@@ -231,6 +231,10 @@ datapack *fragment(char message[]) {
         sendpack[count].clientid = CLIENTID;
         sendpack[count].data = DATA;
         sendpack[count].segnum = count +1;
+        if(count == 2){
+            sendpack[count].segnum = 4;
+        }
+
         sendpack[count].numseg = nsegs;
         sendpack[count].len = MAXPAY;
 
@@ -305,7 +309,7 @@ int deserialize(ackpack *ack,rejpack *rej, char buffer[]){
         return 1;
 
     }else if(((u_char) buffer[3] == 0xf3 && (u_char) buffer[4] == 0xff)
-            || ((u_char) buffer[3] == 0xff && (u_char) buffer[4] == 0xf3)){
+             || ((u_char) buffer[3] == 0xff && (u_char) buffer[4] == 0xf3)){
 
         rej->reject = REJECT;
         rej->subc = buffer[5] + buffer[6];

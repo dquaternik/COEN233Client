@@ -247,7 +247,7 @@ datapack *fragment(char message[]) {
         }
 
         //Insert endid
-        sendpack[count].endid = ENDID;
+        sendpack[count].endid = 652;
 
         //If creating more than one packet, string them together as a linked list
         if(count > 0)
@@ -305,7 +305,7 @@ int deserialize(ackpack *ack,rejpack *rej, char buffer[]){
         return 1;
 
     }else if(((u_char) buffer[3] == 0xf3 && (u_char) buffer[4] == 0xff)
-            || ((u_char) buffer[3] == 0xff && (u_char) buffer[4] == 0xf3)){
+             || ((u_char) buffer[3] == 0xff && (u_char) buffer[4] == 0xf3)){
 
         rej->reject = REJECT;
         rej->subc = buffer[5] + buffer[6];
