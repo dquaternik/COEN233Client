@@ -16,13 +16,14 @@
 #define DATA 0xfff1
 #define ACK 0xfff2
 #define REJECT 0xfff3
-#define REJSUB1 0xfff4
-#define REJSUB2 0xfff5
-#define REJSUB3 0xfff6
-#define REJSUB4 0xfff7
+#define REJSUB1 0xfff4  //out of sequence
+#define REJSUB2 0xfff5  //length mismatch
+#define REJSUB3 0xfff6  //missing end of packet
+#define REJSUB4 0xfff7  //duplicat packet
 
 //Define packet structures (one of each due to different size requirements)
 typedef struct datapack {
+    int numseg;
     unsigned short startid;
     unsigned char clientid;
     unsigned short data;
@@ -30,25 +31,24 @@ typedef struct datapack {
     unsigned char len;
     unsigned char payload[MAXPAY];
     unsigned short endid;
-    unsigned short numseg;
     struct datapack *next;
 }datapack;
 
 typedef struct ackpack {
-    short startid;
-    char clientid;
-    short ack;
-    char segnum;
-    short endid;
+    unsigned short startid;
+    unsigned char clientid;
+    unsigned short ack;
+    unsigned char segnum;
+    unsigned short endid;
 }ackpack;
 
 typedef struct rejpack {
-    short startid;
-    char clientid;
-    short reject;
-    short subc;
-    char segnum;
-    short endid;
+    unsigned short startid;
+    unsigned char clientid;
+    unsigned short reject;
+    unsigned short subc;
+    unsigned char segnum;
+    unsigned short endid;
 }rejpack;
 
 //create buffer structure
@@ -74,7 +74,7 @@ int main()
     int sockfd;
     struct addrinfo hints, *servinfo, *p;
     int rv;
-    int numbytes, res;
+    int numbytes, res, check;
     struct sockaddr_in their_addr;
     databuf *b = new_buffer();
     int count = 0;
@@ -169,7 +169,11 @@ int main()
                 rejpack *rej = malloc(sizeof(rejpack));
 
                 //Deserialize the received packet (this handles error checking as well)
-                deserialize(ack,rej,buf1);
+                check = deserialize(ack,rej,buf1);
+                if(check == 2){
+                    printf("No ACK or REJ received.");
+                    exit(-2);
+                }
                 free(ack);
                 free(rej);
                 break;
@@ -179,6 +183,7 @@ int main()
 
 
         //next packet to send
+        memset(buf1,0,MAXBUFLEN);
         send = send->next;
         b->next = 0;
         count1 = 0;
@@ -299,7 +304,6 @@ void serialize_char(char x, databuf *b) {
 //Returns a value based on the message inside the packet.
 int deserialize(ackpack *ack,rejpack *rej, char buffer[]){
 
-
     //Since this is client side, only checks necessary bits. If they are ACK, it'll return 1.
     // Otherwise it will exit according to the rejection code.
     if(((u_char) buffer[3] == 0xf2 && (u_char) buffer[4] == 0xff)
@@ -312,7 +316,7 @@ int deserialize(ackpack *ack,rejpack *rej, char buffer[]){
              || ((u_char) buffer[3] == 0xff && (u_char) buffer[4] == 0xf3)){
 
         rej->reject = REJECT;
-        rej->subc = buffer[5] + buffer[6];
+        rej->subc = buffer[5] + buffer[6]+1;
         if(rej->subc == 1){
             perror("Error: Packet StartID incorrect\n");
             exit(1);
