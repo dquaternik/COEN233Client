@@ -199,13 +199,7 @@ int main()
 
 
     //free memory from server info after sending and close the socket and turn off client
-    freeaddrinfo(servinfo);
-
     printf("Transmission Complete, no errors received.\n");
-    close(sockfd);
-    free(send);
-    free(b);
-
     return 0;
 }
 
