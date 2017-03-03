@@ -265,7 +265,8 @@ void serialize_Data(datapack send, databuf *output) {
     serialize_short(send.data,output);
     serialize_char(send.segnum,output);
     serialize_char(send.len,output);
-    for(int i = 0; i < MAXPAY; i++)
+    int i;
+    for(i = 0; i < MAXPAY; i++)
     {
         serialize_char(send.payload[i],output);
     }
