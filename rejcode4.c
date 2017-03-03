@@ -180,7 +180,9 @@ int main()
 
 
         //next packet to send
-        send = send->next;
+        if(count < send->numseg-1){
+            send = send->next;
+        }
         b->next = 0;
         count1 = 0;
         count++;
