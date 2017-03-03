@@ -179,7 +179,9 @@ int main()
 
 
         //next packet to send
-        send = send->next;
+	if(count< (send->numseg)-1){
+		send = send->next;
+	};
         b->next = 0;
         count1 = 0;
         count++;
@@ -191,16 +193,8 @@ int main()
 
 
 
-
-
-    //free memory from server info after sending and close the socket and turn off client
-    freeaddrinfo(servinfo);
-
+    //Return 0 if transmission success
     printf("Transmission Complete, no errors received.\n");
-    close(sockfd);
-    free(send);
-    free(b);
-
     return 0;
 }
 
@@ -265,12 +259,14 @@ datapack *fragment(char message[]) {
 
 //Serialize each fragment. Takes in a packet and a pointer to storage. Serializes the data and places it in the storage
 void serialize_Data(datapack send, databuf *output) {
+    
+    int i;
     serialize_short(send.startid,output);
     serialize_char(send.clientid,output);
     serialize_short(send.data,output);
     serialize_char(send.segnum,output);
     serialize_char(send.len,output);
-    for(int i = 0; i < MAXPAY; i++)
+    for(i = 0; i < MAXPAY; i++)
     {
         serialize_char(send.payload[i],output);
     }
