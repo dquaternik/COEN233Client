@@ -1,2 +1,7 @@
-CLIENT for 233 programming assingment 2. 
-Each .c file runs a different client. They are named according to the error they will cause.
+SERVER for Programming Assignment 2.
+
+Files:
+main.c //The server
+database.txt //Database for the server. Must be in same directory. 
+
+To run on linux, type 'gcc -o server main.c -lm' followed by './server'.
